@@ -1,0 +1,10 @@
+build/
+lib/
+cnv/
+*.elf
+*.dbg
+*.fx2
+*.fpkg
+*.a
+*.db
+*~
