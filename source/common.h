@@ -9,8 +9,8 @@ using namespace FeOS::UI;
 extern "C" void __setguimon(IGuiManager* newMon);
 
 #define NON_THROWING_ALLOCATION \
-	inline void* operator new (size_t sz) { return malloc(sz); } \
-	inline void operator delete (void* data) { free(data); }
+	inline void* operator new (size_t sz) throw() { return malloc(sz); } \
+	inline void operator delete (void* data) throw() { free(data); }
 
 typedef struct
 {
