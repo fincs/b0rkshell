@@ -8,7 +8,7 @@ endif
 
 include $(DEVKITARM)/base_rules
 
-ASSETS := image
+ASSETS := assets
 OUTDIR := cnv
 
 VPATH    := $(foreach dir,$(ASSETS),$(CURDIR)/$(dir))
@@ -16,10 +16,12 @@ PNGFILES := $(foreach dir,$(ASSETS),$(notdir $(wildcard $(dir)/*.grit)))
 PNGFILES := $(PNGFILES:.grit=.png)
 GRFFILES := $(foreach item,$(PNGFILES:.png=.grf),$(OUTDIR)/$(item))
 
-.PHONY: all
+.PHONY: all thefolder
 
-all: $(GRFFILES)
+all: thefolder $(GRFFILES)
+
+thefolder:
+	@mkdir -p $(OUTDIR)
 
 $(GRFFILES): $(OUTDIR)/%.grf : %.png
-	@mkdir -p $(OUTDIR)
 	@grit $< -ftr -fh! -o $@
