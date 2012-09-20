@@ -168,9 +168,19 @@ void videoInit()
 }
 
 int emulatedMode = MODE_CONSOLE;
+bool bRunningDMApp = false;
 
 static void doDirectMode()
 {
+	if (!bRunningDMApp)
+	{
+		fprintf(stderr, "Direct mode applications cannot\n");
+		fprintf(stderr, "be run from coop GUI apps nor\n");
+		fprintf(stderr, "from the emulated console.\n");
+		exit(1);
+	}
+	if (emulatedMode == MODE_DIRECT)
+		return;
 	emulatedMode = MODE_DIRECT;
 	// Oopy
 	videoReset();
@@ -178,6 +188,8 @@ static void doDirectMode()
 
 static void doConsoleMode()
 {
+	if (emulatedMode == MODE_CONSOLE)
+		return;
 	emulatedMode = MODE_CONSOLE;
 	videoReset();
 	videoInit();
@@ -231,7 +243,9 @@ void executeApp()
 	if (app.IsDirectMode())
 	{
 		DisableGuiMon();
+		bRunningDMApp = true;
 		system(command);
+		bRunningDMApp = false;
 		EnableGuiMon();
 	}else
 	{
@@ -340,8 +354,10 @@ static bool MainVBlank()
 	if (kDown & KEY_A)
 		executeApp();
 
+#ifdef ALLOW_EXIT
 	if (g_appList.GetCount() == 0 && (kDown & KEY_START))
 		return false;
+#endif
 
 	return true;
 }
