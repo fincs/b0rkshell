@@ -101,44 +101,38 @@ bool CFont::LoadGlyph(int codePoint, glyph_t* /*out*/ pGlyph)
 
 //---------------------------------------------------------------------------
 
-static void DrawGlyph(color_t* buf, const byte_t* data, const rect_t* pRect, color_t brush)
+static void DrawGlyph(color_t* buf, const byte_t* data, const rect_t* pRect, color_t brush, int stride)
 {
-	//CSurface* pSurface = SURFACE(hSurface);
 	int x0 = pRect->x, y0 = pRect->y, x1 = x0 + pRect->w, y1 = y0 + pRect->h;
-	//color_t brush = pSurface->brush;
-	//color_t* buf = pSurface->buf;
-	//int stride = pSurface->stride;
-	//int height = pSurface->height;
-	const int stride = 256;
-	const int height = 192;
+
 	for (int y = y0; y < y1; y ++)
 	{
-		if (y == height) return;
-
 		// Draw a row
 		for (int x = x0; x < x1; x += 8)
 		{
-			int d = *data++; int pos = x + y * stride;
-			if (d >> 7)       buf[pos]   = brush;
-			if ((d >> 6) & 1) buf[pos+1] = brush;
-			if ((d >> 5) & 1) buf[pos+2] = brush;
-			if ((d >> 4) & 1) buf[pos+3] = brush;
-			if ((d >> 3) & 1) buf[pos+4] = brush;
-			if ((d >> 2) & 1) buf[pos+5] = brush;
-			if ((d >> 1) & 1) buf[pos+6] = brush;
-			if (d & 1)        buf[pos+7] = brush;
+			int d = *data++; int pos = x + y * stride; int q = 1 << 8;
+			if (d & (q>>=1)) buf[pos]   = brush;
+			if (d & (q>>=1)) buf[pos+1] = brush;
+			if (d & (q>>=1)) buf[pos+2] = brush;
+			if (d & (q>>=1)) buf[pos+3] = brush;
+			if (d & (q>>=1)) buf[pos+4] = brush;
+			if (d & (q>>=1)) buf[pos+5] = brush;
+			if (d & (q>>=1)) buf[pos+6] = brush;
+			if (d & (q>>=1)) buf[pos+7] = brush;
 		}
 	}
 }
 
-int CFont::PrintText(color_t* buf, int x, int y, const char* text, color_t brush, word_t flags)
+int CFont::PrintText(const surface_t* s, int x, int y, const char* text, color_t brush, word_t flags)
 {
 	typedef ustl::utf8in_iterator<const char*> utf8_iterator;
+
+	color_t* buf = s->buffer;
 
 	if (!(flags & PrintTextFlags::AtBaseline))
 		y += GetBaseline();
 
-	int w = 256, h = 192;
+	int w = s->width, h = s->height, stride = s->stride;
 	int fontH = GetHeight();
 
 	const char* end_pos = text+strlen(text);
@@ -171,7 +165,7 @@ int CFont::PrintText(color_t* buf, int x, int y, const char* text, color_t brush
 			break;
 
 		rect_t r = { x + glyph.posX, y + glyph.posY, glyph.width, glyph.height };
-		DrawGlyph(buf, glyph.data, &r, brush);
+		DrawGlyph(buf, glyph.data, &r, brush, stride);
 		x += glyph.advance;
 	}
 

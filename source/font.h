@@ -59,7 +59,12 @@ public:
 	inline int GetBaseline() { return baseline; }
 	bool LoadGlyph(int codePoint, glyph_t* /*out*/ pGlyph);
 
-	int PrintText(color_t* buf, int x, int y, const char* text, color_t brush = Colors::Black, word_t flags = 0);
+	inline int PrintText(color_t* buf, int x, int y, const char* text, color_t brush = Colors::Black, word_t flags = 0)
+	{
+		const surface_t s = { buf, 256, 192, 256 };
+		return PrintText(&s, x, y, text, brush, flags);
+	}
+	int PrintText(const surface_t* s, int x, int y, const char* text, color_t brush = Colors::Black, word_t flags = 0);
 };
 
 class CHeapFont : public CFont
