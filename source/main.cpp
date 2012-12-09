@@ -2,7 +2,7 @@
 #include "mainui-util.h"
 #include <time.h>
 
-CGrf background, dummy, defappicon, selection, topscr;
+CGrf background, dummy, defappicon, selection, topscr, fiGenericFile, fiConflictFile;
 CFont font;
 Bumper bump;
 int page = 0;
@@ -12,6 +12,10 @@ u16* bmpBuf;
 
 CAppData g_appData[APP_COUNT];
 int g_appCount;
+
+CFileType** g_fileTypes;
+CFileType* g_firstFileType;
+int g_filetypeCount;
 
 AppList g_appList;
 AppWrapper* g_curApp;
@@ -181,8 +185,12 @@ static void doDirectMode()
 	}
 	if (emulatedMode == MODE_DIRECT)
 		return;
+
 	emulatedMode = MODE_DIRECT;
-	// Oopy
+
+	if (g_curApp)
+		g_curApp->OnDeactivate();
+
 	swiWaitForVBlank();
 	videoReset();
 }
@@ -194,7 +202,10 @@ static void doConsoleMode()
 	emulatedMode = MODE_CONSOLE;
 	swiWaitForVBlank();
 	videoReset();
-	videoInit();
+	if (!g_curApp)
+		videoInit();
+	else
+		g_curApp->OnActivate();
 }
 
 static int doGetMode()
@@ -238,24 +249,7 @@ static void renderTopLines()
 
 void executeApp()
 {
-	CAppData& app = g_appData[selectedApp];
-	const char* command = app.GetCommand();
-	//printf("Execute: %d\n", selectedApp);
-
-	if (app.IsDirectMode())
-	{
-		DisableGuiMon();
-		bRunningDMApp = true;
-		system(command);
-		bRunningDMApp = false;
-		EnableGuiMon();
-	}else
-	{
-		thread_t t = FeOS_RunAsync(command);
-		if (!t) return;
-		FeOS_DetachThread(t);
-		//printf("Thread %p\n", t);
-	}
+	g_appData[selectedApp].Run();
 }
 
 static void SwitchToApp(int id)
@@ -462,6 +456,18 @@ int main()
 		return 1;
 	}
 
+	LoadFileTypes();
+
+	for (int q = 0; q < 92; q ++)
+	{
+		if (q < 16)
+			setBrightness(3, q-16);
+		if (q >= (92-16-1))
+			setBrightness(3, q-(92-16-1));
+		if (keysDown()) break;
+		swiWaitForVBlank();
+	}
+
 	setBrightness(3, 0);
 
 	const modeshim_t* oldShim = FeOS_ModeShim(&modeShim);
@@ -471,6 +477,8 @@ int main()
 		selection.Load(GUI_ASSET_DIR "/selection.grf") &&
 		topscr.Load(GUI_ASSET_DIR "/topscr.grf") &&
 		defappicon.Load(GUI_ASSET_DIR "/dummyapp.grf") &&
+		fiGenericFile.Load(GUI_ASSET_DIR "/genericfile.grf") &&
+		fiConflictFile.Load(GUI_ASSET_DIR "/conflictfile.grf") &&
 		font.Load("tahoma", 10)))
 	{
 		FeOS_ModeShim(oldShim);

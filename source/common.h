@@ -24,12 +24,14 @@ typedef struct
 #define GUI_DIRECTORY "/data/FeOS/gui"
 #define GUI_ASSET_DIR GUI_DIRECTORY "/assets"
 #define GUI_FONTS_DIR GUI_DIRECTORY "/fonts"
+#define GUI_FTYPE_DIR GUI_DIRECTORY "/ftypes"
 
 #include "grf.h"
 #include "font.h"
 #include "manifest.h"
 #include "appdata.h"
 #include "applist.h"
+#include "filetypes.h"
 
 #include "guimanager.h"
 
@@ -37,7 +39,17 @@ extern CAppData g_appData[APP_COUNT];
 extern int g_appCount;
 extern bool g_appListChanged;
 
+extern CFileType** g_fileTypes;
+extern CFileType* g_firstFileType;
+extern int g_filetypeCount;
+extern bool bRunningDMApp;
+
+extern CGrf fiGenericFile, fiConflictFile;
+
 void LoadApps();
+void LoadFileTypes();
+
+CFileType* FindFileType(const char* ext, bool& isMulti);
 
 void videoReset();
 void videoInit();

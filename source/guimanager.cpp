@@ -65,3 +65,73 @@ void CGuiManager::SwitchTo(AppWrapper* pApp)
 	else
 		videoInit();
 }
+
+static const char* extractExt(const char* aFileName)
+{
+	const char* ext = aFileName + strlen(aFileName) - 1;
+	bool foundIt = false;
+	for (; ext >= aFileName && !((foundIt = *ext == '.') || *ext == '/'); ext --);
+	return foundIt ? ext+1 : nullptr;
+}
+
+static inline CFileType* getFT(const char* aFileName, bool& isMulti, const char** pExt = nullptr)
+{
+	const char* ext = extractExt(aFileName);
+	if (!ext) return nullptr;
+	if (pExt) *pExt = ext;
+	return FindFileType(ext, isMulti);
+}
+
+void CGuiManager::OpenFile(const char* aFileName)
+{
+	bool isMulti;
+	CFileType* ft = getFT(aFileName, isMulti);
+
+	if (!ft)
+		return;
+
+	CAppData* app = ft->opensWith;
+
+	if (isMulti)
+	{
+		// TODO: app selector :D
+		app = nullptr;
+	}
+
+	printf("Opens with %p (isMulti=%d)\n", app, isMulti);
+
+	if (!app)
+		return;
+
+	app->Run(aFileName);
+}
+
+static CStaticFileIcon oFiGeneric(fiGenericFile);
+static CStaticFileIcon oFiConflict(fiConflictFile);
+
+IFileIcon* CGuiManager::GetFileIcon(const char* aFileName)
+{
+	bool isMulti;
+	CFileType* ft = getFT(aFileName, isMulti);
+
+	if (!ft)
+		return oFiGeneric.getSelf();
+
+	if (isMulti)
+		return oFiConflict.getSelf();
+
+	IFileIcon* ico = ft->opensWith->GetFileIcon();
+	return ico ? ico : oFiGeneric.getSelf();
+}
+
+void CGuiManager::GetFileDescription(const char* aFileName, char* buffer, size_t size)
+{
+	bool isMulti;
+	const char* ext = nullptr;
+	CFileType* ft = getFT(aFileName, isMulti, &ext);
+
+	if (!ft || isMulti)
+		snprintf(buffer, size, ".%s file", ext);
+	else
+		strncpy(buffer, ft->description, size);
+}

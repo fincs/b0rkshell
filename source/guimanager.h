@@ -29,6 +29,10 @@ public:
 		if (pApp) app = (AppWrapper*) pApp->GetOrSetCookie(nullptr);
 		SwitchTo(app);
 	}
+
+	void OpenFile(const char* aFileName);
+	IFileIcon* GetFileIcon(const char* aFileName);
+	void GetFileDescription(const char* aFileName, char* buffer, size_t size);
 };
 
 extern CGuiManager g_guiManager;
