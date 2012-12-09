@@ -404,6 +404,28 @@ static inline bool checkFailSafeComb()
 #define ANSIESC_YELLOW "\x1b[33;1m"
 #define ANSIESC_DEFAULT "\x1b[39;1m"
 
+bool DoSplashScreen()
+{
+	CGrf* gfx = new CGrf();
+	if (!gfx->Load(GUI_ASSET_DIR "/bootsplash.grf"))
+	{
+		delete gfx;
+		return false;
+	}
+
+	FeOS_DirectMode();
+	setBrightness(3, -16);
+
+	videoSetMode(MODE_3_2D);
+	int bg = bgInit(2, BgType_Text8bpp, BgSize_T_256x256, 0, 1);
+
+	dmaCopy(gfx->gfxData, bgGetGfxPtr(bg), MemChunk_GetSize(gfx->gfxData));
+	dmaCopy(gfx->mapData, bgGetMapPtr(bg), MemChunk_GetSize(gfx->mapData));
+	dmaCopy(gfx->palData, BG_PALETTE,      MemChunk_GetSize(gfx->palData));
+	delete gfx;
+	return true;
+}
+
 int main()
 {
 	static bool bActive = false;
@@ -422,15 +444,22 @@ int main()
 		printf("\n");
 		return 0;
 	}
+	
+	if (!DoSplashScreen())
+	{
+		printf(ANSIESC_RED "FAIL\n");
+		return 1;
+	}
 
 	LoadApps();
 	if (!g_appCount)
 	{
+		FeOS_ConsoleMode();
 		fprintf(stderr, "No applications!\n");
 		return 1;
 	}
 
-	FeOS_DirectMode();
+	setBrightness(3, 0);
 
 	const modeshim_t* oldShim = FeOS_ModeShim(&modeShim);
 
