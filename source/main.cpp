@@ -183,6 +183,7 @@ static void doDirectMode()
 		return;
 	emulatedMode = MODE_DIRECT;
 	// Oopy
+	swiWaitForVBlank();
 	videoReset();
 }
 
@@ -191,6 +192,7 @@ static void doConsoleMode()
 	if (emulatedMode == MODE_CONSOLE)
 		return;
 	emulatedMode = MODE_CONSOLE;
+	swiWaitForVBlank();
 	videoReset();
 	videoInit();
 }
@@ -373,6 +375,7 @@ static void RunAppVBlank()
 	{
 		g_curApp->OnDeactivate();
 		g_curApp = nullptr;
+		swiWaitForVBlank();
 		videoReset();
 		videoInit();
 		return;
@@ -476,6 +479,8 @@ int main()
 		return 0;
 	}
 
+	swiWaitForVBlank();
+	videoReset();
 	videoInit();
 	EnableGuiMon();
 

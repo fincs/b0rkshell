@@ -16,29 +16,26 @@ IFont* CGuiManager::LoadFont(const char* face, int size)
 
 void CGuiManager::RunApplication(IApplication* pApp)
 {
-	auto wrap = new AppWrapper(pApp);
-	if (!wrap) return;
+	AppWrapper wrap(pApp);
 
-	auto cookie = g_appList.AddApp(wrap);
+	auto cookie = g_appList.AddApp(&wrap);
 	if (!cookie)
-	{
-		delete wrap;
 		return;
-	}
 
 	g_appListChanged = true;
 
 	if (g_curApp)
 		g_curApp->OnDeactivate();
 
+	swiWaitForVBlank();
 	videoReset();
-	g_curApp = wrap;
+	g_curApp = &wrap;
 	pApp->OnActivate();
 
-	while (wrap->IsAlive())
+	while (wrap.IsAlive())
 		swiWaitForVBlank();
 
-	if (g_curApp == wrap)
+	if (g_curApp == &wrap)
 	{
 		pApp->OnDeactivate();
 		g_curApp = nullptr;
@@ -47,10 +44,9 @@ void CGuiManager::RunApplication(IApplication* pApp)
 	g_appList.RemoveApp(cookie);
 	g_appListChanged = true;
 
-	delete wrap;
-
 	if (!g_curApp)
 	{
+		swiWaitForVBlank();
 		videoReset();
 		videoInit();
 	}
@@ -61,6 +57,7 @@ void CGuiManager::SwitchTo(AppWrapper* pApp)
 	if (g_curApp)
 		g_curApp->OnDeactivate();
 
+	swiWaitForVBlank();
 	videoReset();
 	g_curApp = pApp;
 	if (g_curApp)
