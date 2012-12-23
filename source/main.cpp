@@ -188,10 +188,11 @@ static void doDirectMode()
 
 	emulatedMode = MODE_DIRECT;
 
+	swiWaitForVBlank();
+
 	if (g_curApp)
 		g_curApp->OnDeactivate();
 
-	swiWaitForVBlank();
 	videoReset();
 }
 
@@ -369,7 +370,6 @@ static void RunAppVBlank()
 	{
 		g_curApp->OnDeactivate();
 		g_curApp = nullptr;
-		swiWaitForVBlank();
 		videoReset();
 		videoInit();
 		return;

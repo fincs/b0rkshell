@@ -24,10 +24,11 @@ void CGuiManager::RunApplication(IApplication* pApp)
 
 	g_appListChanged = true;
 
+	swiWaitForVBlank();
+
 	if (g_curApp)
 		g_curApp->OnDeactivate();
 
-	swiWaitForVBlank();
 	videoReset();
 	g_curApp = &wrap;
 	pApp->OnActivate();
@@ -54,10 +55,11 @@ void CGuiManager::RunApplication(IApplication* pApp)
 
 void CGuiManager::SwitchTo(AppWrapper* pApp)
 {
+	swiWaitForVBlank();
+
 	if (g_curApp)
 		g_curApp->OnDeactivate();
 
-	swiWaitForVBlank();
 	videoReset();
 	g_curApp = pApp;
 	if (g_curApp)
