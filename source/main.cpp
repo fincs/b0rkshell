@@ -216,11 +216,18 @@ static int doGetMode()
 
 static const modeshim_t modeShim = { doDirectMode, doConsoleMode, doGetMode };
 
+static const char* getDayEnd(int d)
+{
+	static const char* dayEnds[] = { "th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th" };
+	div_t q = div(d, 10);
+	return q.quot != 1 ? dayEnds[q.rem] : dayEnds[0];
+}
+
 static void renderTopLines()
 {
 	static const char* monthNames[] = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
 	static const char* dayNames[] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
-	static const char* dayEnds[] = { "th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th" };
+	
 	clearBmpLines(0, 128);
 	char buf[128];
 
@@ -232,7 +239,7 @@ static void renderTopLines()
 	myPrintText(16, 23, buf);
 
 	sprintf(buf, "%s, %s %d%s %d", dayNames[timeinfo->tm_wday], monthNames[timeinfo->tm_mon]
-		, timeinfo->tm_mday, dayEnds[timeinfo->tm_mday % 10], timeinfo->tm_year + 1900);
+		, timeinfo->tm_mday, getDayEnd(timeinfo->tm_mday), timeinfo->tm_year + 1900);
 	myPrintText(16, 23+16, buf);
 
 	/*
