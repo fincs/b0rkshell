@@ -283,7 +283,7 @@ static bool MainVBlank()
 	updAppList();
 
 	word_t kDown = keysDown();
-	CTouchPos pos;
+	TouchPos pos;
 
 	// Page moving code
 	do
@@ -295,8 +295,8 @@ static bool MainVBlank()
 		else if (kDown & KEY_DOWN) disp = +6;
 		else if (kDown & KEY_TOUCH)
 		{
-			if (pos.inRegion(0, 48, 8, 64*2+8)) disp = -1;
-			else if (pos.inRegion(256-8, 48, 8, 64*2+8)) disp = +1;
+			if (pos.InRegion(0, 48, 8, 64*2+8)) disp = -1;
+			else if (pos.InRegion(256-8, 48, 8, 64*2+8)) disp = +1;
 		}
 
 		if (!disp) break;
@@ -328,7 +328,7 @@ static bool MainVBlank()
 		{
 			int xPos = 16 + (i % 3) * (64+16);
 			int yPos = 48 + (i / 3) * (64+8);
-			if (pos.inRegion(xPos, yPos, 64, 64))
+			if (pos.InRegion(xPos, yPos, 64, 64))
 			{
 				int touchedApp = page*6 + i;
 				if (touchedApp == selectedApp)
@@ -347,7 +347,7 @@ static bool MainVBlank()
 
 		for (int i = 0; i < g_appList.GetCount(); i ++)
 		{
-			if (!pos.inRegion(64+(i*(16+8)), 16, 16, 16))
+			if (!pos.InRegion(64+(i*(16+8)), 16, 16, 16))
 				continue;
 
 			SwitchToApp(i);

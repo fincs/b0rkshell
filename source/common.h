@@ -32,6 +32,7 @@ typedef struct
 #include "appdata.h"
 #include "applist.h"
 #include "filetypes.h"
+#include "keyboard.h"
 
 #include "guimanager.h"
 

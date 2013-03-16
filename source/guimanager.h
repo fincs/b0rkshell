@@ -33,6 +33,8 @@ public:
 	void OpenFile(const char* aFileName);
 	IFileIcon* GetFileIcon(const char* aFileName);
 	void GetFileDescription(const char* aFileName, char* buffer, size_t size);
+
+	IKeyboard* CreateKeyboard(const char* layout = nullptr) { return newKeyboard(layout); }
 };
 
 extern CGuiManager g_guiManager;

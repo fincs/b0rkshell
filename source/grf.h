@@ -13,6 +13,8 @@
 
 struct CGrf : public GrfFile
 {
+	NON_THROWING_ALLOCATION;
+
 	bool Load(FILE* f);
 	inline bool Load(const char* fileName)
 	{
