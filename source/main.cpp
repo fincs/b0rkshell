@@ -397,12 +397,6 @@ static void RunBgProcess()
 	});
 }
 
-static inline bool checkFailSafeComb()
-{
-	word_t k = keysHeld();
-	return (k & KEY_DOWN) && (k & KEY_LEFT) && (k & KEY_A);
-}
-
 #define ANSIESC_RED "\x1b[31;1m"
 #define ANSIESC_GREEN "\x1b[32;1m"
 #define ANSIESC_YELLOW "\x1b[33;1m"
@@ -441,17 +435,10 @@ int main()
 	}
 
 	bActive = true;
-	if (checkFailSafeComb())
-	{
-		printf(ANSIESC_YELLOW "FeOS Fail-Safe mode\n");
-		printf(ANSIESC_DEFAULT "Command prompt boot enabled\n");
-		printf("\n");
-		return 0;
-	}
-	
+
 	if (!DoSplashScreen())
 	{
-		printf(ANSIESC_RED "FAIL\n");
+		printf(ANSIESC_RED "FAIL" ANSIESC_DEFAULT "\n");
 		return 1;
 	}
 
