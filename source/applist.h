@@ -11,7 +11,7 @@ public:
 	inline AppWrapper(IApplication* pApp) : app(pApp)
 	{
 		info = pApp->GetInfo();
-		thr = FeOS_GetCurrentThread();
+		thr = ThrGetSelf();
 		pApp->GetOrSetCookie((AppCookie)this);
 	}
 
@@ -24,10 +24,10 @@ public:
 	static int _thunk_OnVBlank(void* prm) { ((IApplication*)prm)->OnVBlank(); return 0; }
 	static int _thunk_OnBgProcess(void* prm) { ((IApplication*)prm)->OnBgProcess(); return 0; }
 
-	inline void OnActivate() { FeOS_RunInContext(thr, _thunk_OnActivate, app); }
-	inline void OnDeactivate() { FeOS_RunInContext(thr, _thunk_OnDeactivate, app); }
-	inline void OnVBlank() { FeOS_RunInContext(thr, _thunk_OnVBlank, app); }
-	inline void OnBgProcess() { FeOS_RunInContext(thr, _thunk_OnBgProcess, app); }
+	inline void OnActivate() { ThrRunInContext(thr, _thunk_OnActivate, app); }
+	inline void OnDeactivate() { ThrRunInContext(thr, _thunk_OnDeactivate, app); }
+	inline void OnVBlank() { ThrRunInContext(thr, _thunk_OnVBlank, app); }
+	inline void OnBgProcess() { ThrRunInContext(thr, _thunk_OnBgProcess, app); }
 
 	NON_THROWING_ALLOCATION;
 };

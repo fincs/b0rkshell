@@ -29,13 +29,17 @@ SOURCES       := source
 DATA          := data
 INCLUDES      := include
 
+MANIFEST      := package.manifest
+PACKAGENAME   := $(TARGET)
+
 CONF_DEFINES =
-CONF_USERLIBS = ustl libdecompress coopgui multifeos
-CONF_LIBS = -lustl -llibdecompress -lcoopgui -lmultifeos
+CONF_USERLIBS = feosclasses libdecompress coopgui
+CONF_LIBS = -lfeosclasses -llibdecompress -lcoopgui
 CONF_PREREQUISITES = assets
 CONF_EXTRACLEAN = cnv
 
 include $(FEOSMK)/app.mk
+include $(FEOSMK)/package.mk
 
 .PHONY: install assets
 

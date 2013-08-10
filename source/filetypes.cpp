@@ -19,6 +19,8 @@ static void addFileType(const char* ext, const char* app, const char* descr)
 	//	return;
 
 	CFileType* ft = new CFileType();
+	if (!ft) return;
+
 	strncpy(ft->ext, ext, sizeof(ft->ext));
 	ft->opensWith = pApp;
 	ft->description = strdup(descr);

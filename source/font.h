@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include <feos_map>
 
 typedef struct
 {
@@ -33,10 +34,8 @@ typedef struct
 
 class CFont : public IFont
 {
-	typedef ustl::map<int,ffnt_page_t*> pageMapType;
-	typedef pageMapType::iterator pageMapIter;
 	FILE* f;
-	pageMapType pageMap;
+	FeOS::Map<int, ffnt_page_t*> pageMap;
 
 	int npages, height, baseline;
 

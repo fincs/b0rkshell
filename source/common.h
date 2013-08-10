@@ -1,7 +1,5 @@
 #pragma once
 #include <coopgui.h>
-#include <ustl.h>
-#include <multifeos.h>
 
 using namespace FeOS::UI;
 

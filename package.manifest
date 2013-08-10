@@ -1,0 +1,7 @@
+Title: FeOS Graphical Shell
+Author: fincs <fincs@mtheall.com>
+Description: This is the main FeOS UI
+Version: 0.2-alpha
+Copyright: 2013 FeOS Team
+Depends: feosclasses, libdecompress
+License: WTFPL

@@ -128,8 +128,8 @@ void CAppData::Run(const char* parameter)
 		EnableGuiMon();
 	}else
 	{
-		thread_t t = FeOS_RunAsync(cmd);
+		thread_t t = PsCreateFromCmdLine(cmd);
 		if (!t) return;
-		FeOS_DetachThread(t);
+		ThrDetach(t);
 	}
 }

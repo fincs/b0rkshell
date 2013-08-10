@@ -7,7 +7,6 @@ CFont font;
 Bumper bump;
 int page = 0;
 int selectedApp = 0;
-SpriteEntry* oamSubMem;
 u16* bmpBuf;
 
 CAppData g_appData[APP_COUNT];
@@ -39,11 +38,11 @@ static int myPrintText(int x, int y, const char* text, color_t brush = Colors::B
 
 void videoReset()
 {
-	FeOS_VideoReset();
+	DSVideoReset();
 
-	FeOS_SetAutoUpdate(AUTOUPD_OAM, true);
-	FeOS_SetAutoUpdate(AUTOUPD_BG, true);
-	FeOS_SetAutoUpdate(AUTOUPD_KEYS, true);
+	DSSetAutoUpdate(AUTOUPD_OAM, true);
+	DSSetAutoUpdate(AUTOUPD_BG, true);
+	DSSetAutoUpdate(AUTOUPD_KEYS, false);
 }
 
 static void updCursor()
@@ -52,15 +51,15 @@ static void updCursor()
 
 	int slPage = selectedApp / 6;
 	if (slPage != page)
-		oamSubMem[6].isHidden = true;
+		oamSub_mem[6].isHidden = true;
 	else
 	{
 		int x = selectedApp % 6;
 		int xPos = 16 + (x % 3) * (64+16) - 8;
 		int yPos = 48 + (x / 3) * (64+8) + 64 - 8;
-		oamSubMem[6].x = xPos;
-		oamSubMem[6].y = yPos;
-		oamSubMem[6].isHidden = false;
+		oamSub_mem[6].x = xPos;
+		oamSub_mem[6].y = yPos;
+		oamSub_mem[6].isHidden = false;
 	}
 
 	clearBmpLines(128, 192-128);
@@ -89,9 +88,9 @@ static void loadPageIcons()
 		if (gfxPtrs[i])
 		{
 			dmaCopy(gfxPtrs[i], gfx, MemChunk_GetSize(gfxPtrs[i]));
-			oamSubMem[i].isHidden = false;
+			oamSub_mem[i].isHidden = false;
 		}else
-			oamSubMem[i].isHidden = true;
+			oamSub_mem[i].isHidden = true;
 		gfx += 64*64;
 	}
 }
@@ -104,7 +103,7 @@ static void updAppList()
 	int i;
 
 	for (i = 0; i < MAX_RUNNING_APP_COUNT; i ++)
-		oamSubMem[7+i].isHidden = true;
+		oamSub_mem[7+i].isHidden = true;
 
 	i = 7;
 	u16* gfx = SPRITE_GFX_SUB + 6*64*64 + 16*16;
@@ -112,17 +111,18 @@ static void updAppList()
 	{
 		color_t* pAppIcon = app->GetInfo()->Icon;
 		dmaCopy(pAppIcon ? pAppIcon : defappicon.gfxData, gfx, 16*16*2);
-		oamSubMem[i++].isHidden = false;
+		oamSub_mem[i++].isHidden = false;
 		gfx += 16*16;
 		return true;
 	});
 }
 
+static bool forceTopScrRefresh;
+
 void videoInit()
 {
 	videoSetModeSub(MODE_0_2D);
 	oamInit(&oamSub, SpriteMapping_Bmp_1D_128, false);
-	oamSubMem = FeOS_GetOAMMemory(&oamSub);
 
 	int bgId = bgInitSub(3, BgType_Text8bpp, BgSize_T_256x256, 0, 1);
 	bgSetPriority(bgId, 3);
@@ -158,7 +158,7 @@ void videoInit()
 	for (int i = 0; i < MAX_RUNNING_APP_COUNT; i ++)
 	{
 		oamSet(&oamSub, 7+i, 64+(i*(16+8)), 16, 1, 15, SpriteSize_16x16, SpriteColorFormat_Bmp, gfx, -1, 0, false, false, false, false);
-		oamSubMem[7+i].isHidden = true;
+		oamSub_mem[7+i].isHidden = true;
 		gfx += 16*16;
 	}
 
@@ -169,6 +169,7 @@ void videoInit()
 	updCursor();
 	loadPageIcons();
 	updAppList();
+	forceTopScrRefresh = true;
 }
 
 int emulatedMode = MODE_CONSOLE;
@@ -223,17 +224,40 @@ static const char* getDayEnd(int d)
 	return q.quot != 1 ? dayEnds[q.rem] : dayEnds[0];
 }
 
+typedef struct
+{
+	time_t curTime;
+	word_t freeMem;
+	word_t totalMem;
+} topscrinfo_t;
+
+static topscrinfo_t topscrinfo;
+
 static void renderTopLines()
 {
 	static const char* monthNames[] = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
 	static const char* dayNames[] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
 	
+	topscrinfo_t curInfo;
+	time(&curInfo.curTime);
+	{
+		usagestats_t memStats;
+		KeGetMemStats(&memStats);
+		curInfo.freeMem = memStats.free;
+		curInfo.totalMem = memStats.total;
+	}
+
+	if (forceTopScrRefresh || memcmp(&topscrinfo, &curInfo, sizeof(topscrinfo_t)) != 0)
+	{
+		forceTopScrRefresh = false;
+		memcpy(&topscrinfo, &curInfo, sizeof(topscrinfo_t));
+	} else
+		return;
+
 	clearBmpLines(0, 128);
 	char buf[128];
 
-	time_t rawtime;
-	time(&rawtime);
-	struct tm* timeinfo = localtime(&rawtime);
+	struct tm* timeinfo = localtime(&curInfo.curTime);
 
 	sprintf(buf, "%02d:%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
 	myPrintText(16, 23, buf);
@@ -249,9 +273,7 @@ static void renderTopLines()
 		myPrintText(16, 23+i*16, buf);
 	}
 	*/
-	usagestats_t memStats;
-	FeOS_GetMemStats(&memStats);
-	sprintf(buf, "%d KiB (%d%%) of free RAM", memStats.free / 1024, (memStats.free * 100) / memStats.total);
+	sprintf(buf, "%d KiB (%d%%) of free RAM", curInfo.freeMem / 1024, (curInfo.freeMem * 100) / curInfo.totalMem);
 	myPrintText(16, 23+2*16, buf);
 }
 
@@ -405,13 +427,16 @@ static void RunBgProcess()
 bool DoSplashScreen()
 {
 	CGrf* gfx = new CGrf();
+	if (!gfx)
+		return false;
+
 	if (!gfx->Load(GUI_ASSET_DIR "/bootsplash.grf"))
 	{
 		delete gfx;
 		return false;
 	}
 
-	FeOS_DirectMode();
+	DSDirectMode();
 	setBrightness(3, -16);
 
 	videoSetMode(MODE_3_2D);
@@ -445,7 +470,7 @@ int main()
 	LoadApps();
 	if (!g_appCount)
 	{
-		FeOS_ConsoleMode();
+		DSConsoleMode();
 		fprintf(stderr, "No applications!\n");
 		return 1;
 	}
@@ -464,7 +489,7 @@ int main()
 
 	setBrightness(3, 0);
 
-	const modeshim_t* oldShim = FeOS_ModeShim(&modeShim);
+	const modeshim_t* oldShim = DSModeShim(&modeShim);
 
 	if (!(background.Load(GUI_ASSET_DIR "/background.grf") &&
 		dummy.Load(GUI_ASSET_DIR "/dummy.grf") &&
@@ -475,8 +500,8 @@ int main()
 		fiConflictFile.Load(GUI_ASSET_DIR "/conflictfile.grf") &&
 		font.Load("tahoma", 10)))
 	{
-		FeOS_ModeShim(oldShim);
-		FeOS_ConsoleMode();
+		DSModeShim(oldShim);
+		DSConsoleMode();
 		printf("FAIL\n");
 		return 0;
 	}
@@ -489,6 +514,7 @@ int main()
 	for (;;)
 	{
 		swiWaitForVBlank();
+		scanKeys();
 		if (g_curApp)
 			RunAppVBlank();
 		else if (!MainVBlank())
@@ -497,8 +523,8 @@ int main()
 	}
 
 	DisableGuiMon();
-	FeOS_ModeShim(oldShim);
+	DSModeShim(oldShim);
 
-	FeOS_ConsoleMode();
+	DSConsoleMode();
 	return 0;
 }

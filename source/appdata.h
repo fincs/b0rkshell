@@ -3,6 +3,8 @@
 
 struct CProvideFileIcon : public IFileIcon
 {
+	NON_THROWING_ALLOCATION;
+
 	int refCount;
 	CGrf* data;
 
@@ -57,6 +59,8 @@ class CAppData
 	CProvideFileIcon cachedFileIcon;
 
 public:
+	NON_THROWING_ALLOCATION;
+
 	inline CAppData() : bLoaded(false), cachedIcon(nullptr), name(nullptr) { }
 	inline ~CAppData() { Free(); }
 

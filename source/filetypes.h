@@ -3,6 +3,8 @@
 
 struct CFileType
 {
+	NON_THROWING_ALLOCATION;
+
 	CFileType** metaPtr;
 	union
 	{

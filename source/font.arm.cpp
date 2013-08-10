@@ -2,13 +2,8 @@
 
 bool CFont::loadFont(const char* filename)
 {
-	if (f)
-	{
-		fclose(f); f = NULL;
-		foreach(pageMapIter, i, pageMap)
-			free(i->second);
-		pageMap.clear();
-	}
+	if (f) return false;
+
 	f = fopen(filename, "rb");
 	if (!f) return false;
 	ffnt_header_t hdr;
@@ -28,13 +23,13 @@ CFont::CFont() : f(0), cachedPageN(-1)
 CFont::~CFont()
 {
 	if (f) fclose(f);
-	foreach(pageMapIter, i, pageMap)
-		free(i->second);
+	for (auto& it : pageMap)
+		free(it.second);
 }
 
 ffnt_page_t* CFont::getPage(int page)
 {
-	pageMapIter it = pageMap.find(page);
+	auto it = pageMap.Find(page);
 	if (it != pageMap.end())
 		return it->second;
 	else
@@ -58,7 +53,7 @@ ffnt_page_t* CFont::loadPage(int page)
 	fseek(f, ent.offset, SEEK_SET);
 	fread(pageData, 1, ent.size, f);
 
-	pageMap.insert(ustl::make_pair(page, pageData));
+	pageMap.Insert(std::make_pair(page, pageData));
 	return pageData;
 }
 
@@ -66,7 +61,7 @@ ffnt_page_t* CFont::loadPage(int page)
 
 bool CFont::Load(const char* face, int size)
 {
-	static char buf[PATH_MAX];
+	char buf[256];
 	snprintf(buf, sizeof(buf), GUI_FONTS_DIR "/%s%d.ffnt", face, size);
 	return loadFont(buf);
 }
@@ -125,8 +120,6 @@ static void DrawGlyph(color_t* buf, const byte_t* data, const rect_t* pRect, col
 
 int CFont::PrintText(const surface_t* s, int x, int y, const char* text, color_t brush, word_t flags)
 {
-	typedef ustl::utf8in_iterator<const char*> utf8_iterator;
-
 	color_t* buf = s->buffer;
 
 	if (!(flags & PrintTextFlags::AtBaseline))
@@ -135,12 +128,55 @@ int CFont::PrintText(const surface_t* s, int x, int y, const char* text, color_t
 	int w = s->width, h = s->height, stride = s->stride;
 	int fontH = GetHeight();
 
-	const char* end_pos = text+strlen(text);
-	utf8_iterator end(end_pos);
-
-	for (utf8_iterator i(text); i < end; ++ i)
+	const char* endPos = text+strlen(text);
+	
+	for (const char* curPos = text; curPos != endPos;)
 	{
-		int c = *i;
+		// Decode a UTF-8 encoded code point
+		// Case A: U+000000 - U+00007F: 0xxxxxxx
+		// Case B: U+000080 - U+0007FF: 110xxxxx 10xxxxxx
+		// Case C: U+000800 - U+00FFFF: 1110xxxx 10xxxxxx 10xxxxxx
+		// Case D: U+010000 - U+1FFFFF: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+		int c = *curPos++;
+		if (c & 0x80)
+		{
+			// Non-ASCII code point
+			int contBytes = 0;
+			if ((c & 0xE0) == 0xC0) // case B
+			{
+				contBytes = 1;
+				c &= 0x1F;
+			} else if ((c & 0xF0) == 0xE0) // case C
+			{
+				contBytes = 2;
+				c &= 0xF;
+			} else if ((c & 0xF8) == 0xF0) // case D
+			{
+				contBytes = 3;
+				c &= 7;
+			} else
+				c = 0xFFFD; // replacement character
+
+			while (contBytes--)
+			{
+				if (curPos == endPos)
+				{
+					c = 0xFFFD;
+					break;
+				}
+
+				c <<= 6;
+				int b = *curPos++;
+
+				if ((b & 0xC0) != 0x80) // continuation byte
+				{
+					c = 0xFFFD;
+					break;
+				}
+
+				c |= b & 0x3F;
+			}
+		}
 
 		if (c == '\n')
 		{
