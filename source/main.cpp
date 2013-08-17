@@ -36,15 +36,6 @@ static int myPrintText(int x, int y, const char* text, color_t brush = Colors::B
 	return font.PrintText(bmpBuf, x, y, text, brush, flags);
 }
 
-void videoReset()
-{
-	DSVideoReset();
-
-	DSSetAutoUpdate(AUTOUPD_OAM, true);
-	DSSetAutoUpdate(AUTOUPD_BG, true);
-	DSSetAutoUpdate(AUTOUPD_KEYS, false);
-}
-
 static void updCursor()
 {
 	CAppData& app = g_appData[selectedApp];
@@ -172,50 +163,36 @@ void videoInit()
 	forceTopScrRefresh = true;
 }
 
-int emulatedMode = MODE_CONSOLE;
-bool bRunningDMApp = false;
+bool bRunningDMApp;
 
-static void doDirectMode()
+static int hwReqFunction(threadEP_t func, void* userData)
 {
 	if (!bRunningDMApp)
 	{
 		fprintf(stderr, "Direct mode applications cannot\n");
 		fprintf(stderr, "be run from coop GUI apps nor\n");
 		fprintf(stderr, "from the emulated console.\n");
-		exit(1);
+		return -1;
 	}
-	if (emulatedMode == MODE_DIRECT)
-		return;
-
-	emulatedMode = MODE_DIRECT;
 
 	swiWaitForVBlank();
 
 	if (g_curApp)
 		g_curApp->OnDeactivate();
 
-	videoReset();
-}
+	DSVideoReset();
 
-static void doConsoleMode()
-{
-	if (emulatedMode == MODE_CONSOLE)
-		return;
-	emulatedMode = MODE_CONSOLE;
+	int rc = func(userData);
+
 	swiWaitForVBlank();
-	videoReset();
+	DSVideoReset();
 	if (!g_curApp)
 		videoInit();
 	else
 		g_curApp->OnActivate();
-}
 
-static int doGetMode()
-{
-	return emulatedMode;
+	return rc;
 }
-
-static const modeshim_t modeShim = { doDirectMode, doConsoleMode, doGetMode };
 
 static const char* getDayEnd(int d)
 {
@@ -399,7 +376,7 @@ static void RunAppVBlank()
 	{
 		g_curApp->OnDeactivate();
 		g_curApp = nullptr;
-		videoReset();
+		DSVideoReset();
 		videoInit();
 		return;
 	}
@@ -419,35 +396,84 @@ static void RunBgProcess()
 	});
 }
 
-#define ANSIESC_RED "\x1b[31;1m"
-#define ANSIESC_GREEN "\x1b[32;1m"
-#define ANSIESC_YELLOW "\x1b[33;1m"
-#define ANSIESC_DEFAULT "\x1b[39;1m"
+enum { ERR_NOMEM = 1, ERR_NOLOAD = 2, ERR_NOAPPS = 3 };
 
-bool DoSplashScreen()
+int hwMainFunc(void* userData)
 {
-	CGrf* gfx = new CGrf();
-	if (!gfx)
-		return false;
+	CGrf* bootSplash = new CGrf();
+	if (!bootSplash)
+		return ERR_NOMEM;
 
-	if (!gfx->Load(GUI_ASSET_DIR "/bootsplash.grf"))
+	if (!bootSplash->Load(GUI_ASSET_DIR "/bootsplash.grf"))
 	{
-		delete gfx;
-		return false;
+		delete bootSplash;
+		return ERR_NOLOAD;
 	}
 
-	DSDirectMode();
 	setBrightness(3, -16);
 
 	videoSetMode(MODE_3_2D);
 	int bg = bgInit(2, BgType_Text8bpp, BgSize_T_256x256, 0, 1);
 
-	dmaCopy(gfx->gfxData, bgGetGfxPtr(bg), MemChunk_GetSize(gfx->gfxData));
-	dmaCopy(gfx->mapData, bgGetMapPtr(bg), MemChunk_GetSize(gfx->mapData));
-	dmaCopy(gfx->palData, BG_PALETTE,      MemChunk_GetSize(gfx->palData));
-	delete gfx;
-	return true;
+	dmaCopy(bootSplash->gfxData, bgGetGfxPtr(bg), MemChunk_GetSize(bootSplash->gfxData));
+	dmaCopy(bootSplash->mapData, bgGetMapPtr(bg), MemChunk_GetSize(bootSplash->mapData));
+	dmaCopy(bootSplash->palData, BG_PALETTE,      MemChunk_GetSize(bootSplash->palData));
+	delete bootSplash;
+
+	LoadApps();
+	if (!g_appCount) return ERR_NOAPPS;
+	LoadFileTypes();
+
+	if (!(background.Load(GUI_ASSET_DIR "/background.grf") &&
+		dummy.Load(GUI_ASSET_DIR "/dummy.grf") &&
+		selection.Load(GUI_ASSET_DIR "/selection.grf") &&
+		topscr.Load(GUI_ASSET_DIR "/topscr.grf") &&
+		defappicon.Load(GUI_ASSET_DIR "/dummyapp.grf") &&
+		fiGenericFile.Load(GUI_ASSET_DIR "/genericfile.grf") &&
+		fiConflictFile.Load(GUI_ASSET_DIR "/conflictfile.grf") &&
+		font.Load("tahoma", 10)))
+		return ERR_NOLOAD;
+
+	for (int q = 0; q < 92; q ++)
+	{
+		if (q < 16)
+			setBrightness(3, q-16);
+		if (q >= (92-16-1))
+			setBrightness(3, q-(92-16-1));
+		if (keysDown()) break;
+		swiWaitForVBlank();
+		scanKeys();
+	}
+
+	setBrightness(3, 0);
+	swiWaitForVBlank();
+	DSVideoReset();
+	videoInit();
+	EnableGuiMon();
+
+	for (;;)
+	{
+		swiWaitForVBlank();
+		scanKeys();
+		oamUpdate(&oamMain);
+		oamUpdate(&oamSub);
+		bgUpdate();
+
+		if (g_curApp)
+			RunAppVBlank();
+		else if (!MainVBlank())
+			break;
+		RunBgProcess();
+	}
+
+	DisableGuiMon();
+	return 0;
 }
+
+#define ANSIESC_RED "\x1b[31;1m"
+#define ANSIESC_GREEN "\x1b[32;1m"
+#define ANSIESC_YELLOW "\x1b[33;1m"
+#define ANSIESC_DEFAULT "\x1b[39;1m"
 
 int main()
 {
@@ -460,71 +486,23 @@ int main()
 	}
 
 	bActive = true;
-
-	if (!DoSplashScreen())
+	int rc = DSRequestHardware(hwMainFunc, NULL, hwReqFunction);
+	switch (rc)
 	{
-		printf(ANSIESC_RED "FAIL" ANSIESC_DEFAULT "\n");
-		return 1;
-	}
-
-	LoadApps();
-	if (!g_appCount)
-	{
-		DSConsoleMode();
-		fprintf(stderr, "No applications!\n");
-		return 1;
-	}
-
-	LoadFileTypes();
-
-	for (int q = 0; q < 92; q ++)
-	{
-		if (q < 16)
-			setBrightness(3, q-16);
-		if (q >= (92-16-1))
-			setBrightness(3, q-(92-16-1));
-		if (keysDown()) break;
-		swiWaitForVBlank();
-	}
-
-	setBrightness(3, 0);
-
-	const modeshim_t* oldShim = DSModeShim(&modeShim);
-
-	if (!(background.Load(GUI_ASSET_DIR "/background.grf") &&
-		dummy.Load(GUI_ASSET_DIR "/dummy.grf") &&
-		selection.Load(GUI_ASSET_DIR "/selection.grf") &&
-		topscr.Load(GUI_ASSET_DIR "/topscr.grf") &&
-		defappicon.Load(GUI_ASSET_DIR "/dummyapp.grf") &&
-		fiGenericFile.Load(GUI_ASSET_DIR "/genericfile.grf") &&
-		fiConflictFile.Load(GUI_ASSET_DIR "/conflictfile.grf") &&
-		font.Load("tahoma", 10)))
-	{
-		DSModeShim(oldShim);
-		DSConsoleMode();
-		printf("FAIL\n");
-		return 0;
-	}
-
-	swiWaitForVBlank();
-	videoReset();
-	videoInit();
-	EnableGuiMon();
-
-	for (;;)
-	{
-		swiWaitForVBlank();
-		scanKeys();
-		if (g_curApp)
-			RunAppVBlank();
-		else if (!MainVBlank())
+		default: break;
+		case -1:
+			printf(ANSIESC_RED "Failure to use hardware!" ANSIESC_DEFAULT "\n");
 			break;
-		RunBgProcess();
+		case ERR_NOMEM:
+			printf(ANSIESC_RED "Out of memory!" ANSIESC_DEFAULT "\n");
+			break;
+		case ERR_NOLOAD:
+			printf(ANSIESC_RED "Could not load resources!" ANSIESC_DEFAULT "\n");
+			break;
+		case ERR_NOAPPS:
+			printf(ANSIESC_RED "No applications present!" ANSIESC_DEFAULT "\n");
+			break;
 	}
 
-	DisableGuiMon();
-	DSModeShim(oldShim);
-
-	DSConsoleMode();
-	return 0;
+	return rc;
 }

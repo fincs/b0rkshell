@@ -45,6 +45,8 @@ IFileIcon* CAppData::GetFileIcon()
 		buf[sizeof(buf)-1] = 0;
 
 		CGrf* ic = new CGrf();
+		if (!ic) return nullptr;
+
 		if (!ic->Load(buf))
 		{
 			delete ic;

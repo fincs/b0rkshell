@@ -29,7 +29,7 @@ void CGuiManager::RunApplication(IApplication* pApp)
 	if (g_curApp)
 		g_curApp->OnDeactivate();
 
-	videoReset();
+	DSVideoReset();
 	g_curApp = &wrap;
 	pApp->OnActivate();
 
@@ -48,7 +48,7 @@ void CGuiManager::RunApplication(IApplication* pApp)
 	if (!g_curApp)
 	{
 		swiWaitForVBlank();
-		videoReset();
+		DSVideoReset();
 		videoInit();
 	}
 }
@@ -60,7 +60,7 @@ void CGuiManager::SwitchTo(AppWrapper* pApp)
 	if (g_curApp)
 		g_curApp->OnDeactivate();
 
-	videoReset();
+	DSVideoReset();
 	g_curApp = pApp;
 	if (g_curApp)
 		g_curApp->OnActivate();

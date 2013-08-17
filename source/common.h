@@ -50,6 +50,5 @@ void LoadFileTypes();
 
 CFileType* FindFileType(const char* ext, bool& isMulti);
 
-void videoReset();
 void videoInit();
 
