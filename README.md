@@ -6,7 +6,7 @@ b0rkshell is FeOS' official graphical user interface (GUI).
 Installation
 ------------
 
-b0rkshell requires [uSTL for FeOS](http://feos.mtheall.com/uSTL-FeOS/) and [libdecompress](https://github.com/mtheall/libdecompress).
+b0rkshell requires [feosclasses](http://feos.mtheall.com/feosclasses.tar.bz2) (WIP library) and [libdecompress](https://github.com/mtheall/libdecompress).
 
 b0rkshell is compiled using `make install`.
 
